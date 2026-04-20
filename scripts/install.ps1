@@ -69,8 +69,8 @@ $form.Controls.Add($progressItem)
 
 # ===== FUNÇÃO INSTALAR =====
 # Reset barras
-$progress.Value = 0
-$progressItem.Value = 0
+$global:progress.Value = 0
+$global:progressItem.Value = 0
 
 foreach ($item in $lista) {
 
