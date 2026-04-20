@@ -120,8 +120,48 @@ function Instalar($lista) {
     $btnInstalar.Enabled = $false
     $btnTodos.Enabled = $false
 
+    $total = $lista.Count
+    $index = 0
+
     foreach ($item in $lista) {
+        $index++
         $prog = $programas | Where-Object { $_.nome -eq $item }
+        if ($null -eq $prog) { continue }
+
+        $caminho = "$base\$($prog.arquivo)"
+
+        try {
+            if (-not (Test-Path $caminho)) {
+                $status.Text = "[$index/$total] Baixando $($prog.nome)..."
+                $form.Refresh()
+                Download-File $prog.url $caminho
+            }
+
+            $status.Text = "[$index/$total] Instalando $($prog.nome)..."
+            $form.Refresh()
+
+            if ($prog.tipo -eq "msi") {
+                Start-Process "msiexec.exe" -ArgumentList "/i `"$caminho`" /qn /norestart" -Wait
+            } else {
+                Start-Process $caminho -ArgumentList "/S" -Wait
+            }
+
+            Remove-Item $caminho -Force -ErrorAction SilentlyContinue
+
+        } catch {
+            $status.Text = "[$index/$total] Erro em $($prog.nome): $($_.Exception.Message)"
+        }
+
+        # progresso geral por item
+        $progress.Value = [int](($index / $total) * 100)
+    }
+
+    $status.Text = "Concluído! ($total/$total)"
+    $progress.Value = 100
+
+    $btnInstalar.Enabled = $true
+    $btnTodos.Enabled = $true
+}
         if ($null -eq $prog) { continue }
 
         $caminho = "$base\$($prog.arquivo)"
