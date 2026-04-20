@@ -14,8 +14,8 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 # ===== CONFIG =====
 $base = "$env:ProgramData\RDSolutec"
 New-Item -ItemType Directory -Path $base -Force | Out-Null
-$log = "$base\install.log"
 
+# ===== PROGRAMAS =====
 $programas = @(
     @{ nome="AnyDesk"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/AnyDesk.exe"; arquivo="AnyDesk.exe"; tipo="exe" },
     @{ nome="Google Chrome"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/ChromeSetup.exe"; arquivo="ChromeSetup.exe"; tipo="exe" },
@@ -43,6 +43,7 @@ $checkList.Size = New-Object System.Drawing.Size(550,200)
 $checkList.Location = New-Object System.Drawing.Point(20,20)
 
 foreach ($p in $programas) { $checkList.Items.Add($p.nome) }
+
 $form.Controls.Add($checkList)
 
 # ===== BOTÕES =====
@@ -58,6 +59,7 @@ $btnSelecionar.Add_Click({
         $checkList.SetItemChecked($i,$true)
     }
 })
+
 $form.Controls.Add($btnSelecionar)
 
 $btnInstalar = New-Object System.Windows.Forms.Button
@@ -66,6 +68,7 @@ $btnInstalar.BackColor = "#28A745"
 $btnInstalar.ForeColor = "White"
 $btnInstalar.Location = New-Object System.Drawing.Point(210,240)
 $btnInstalar.Size = New-Object System.Drawing.Size(170,40)
+
 $form.Controls.Add($btnInstalar)
 
 $btnTodos = New-Object System.Windows.Forms.Button
@@ -74,6 +77,7 @@ $btnTodos.BackColor = "#28A745"
 $btnTodos.ForeColor = "White"
 $btnTodos.Location = New-Object System.Drawing.Point(400,240)
 $btnTodos.Size = New-Object System.Drawing.Size(170,40)
+
 $form.Controls.Add($btnTodos)
 
 # ===== STATUS =====
@@ -120,7 +124,9 @@ function Download-File($url,$destino){
             if($speed -gt 0){
                 $remaining = ($_.TotalBytesToReceive - $bytes)/$speed
                 $eta = [TimeSpan]::FromSeconds($remaining).ToString("mm\:ss")
-            } else { $eta = "--:--" }
+            } else {
+                $eta = "--:--"
+            }
 
             $info.Text = "$speedKB KB/s | ETA: $eta"
 
@@ -145,48 +151,39 @@ function Download-File($url,$destino){
 # ===== INSTALAR =====
 function Instalar($lista){
 
-    $btnInstalar.Enabled = $false
-    $btnTodos.Enabled = $false
-
     $total = $lista.Count
     $i = 0
 
     foreach($item in $lista){
+
         $i++
         $prog = $programas | Where-Object { $_.nome -eq $item }
         if(!$prog){continue}
 
         $path = "$base\$($prog.arquivo)"
 
-        try{
-            $status.Text = "[$i/$total] Baixando $($prog.nome)"
-            $form.Refresh()
+        $status.Text = "[$i/$total] Baixando $($prog.nome)"
+        $form.Refresh()
 
-            if(!(Test-Path $path)){
-                Download-File $prog.url $path
-            }
-
-            $status.Text = "[$i/$total] Instalando $($prog.nome)"
-            $form.Refresh()
-
-            if($prog.tipo -eq "msi"){
-                Start-Process msiexec.exe -ArgumentList "/i `"$path`" /qn" -Wait
-            } else {
-                Start-Process $path -ArgumentList "/S" -Wait
-            }
-
-            Remove-Item $path -Force -ErrorAction SilentlyContinue
-
-        } catch {
-            $status.Text = "Erro em $($prog.nome)"
+        if(!(Test-Path $path)){
+            Download-File $prog.url $path
         }
+
+        $status.Text = "[$i/$total] Instalando $($prog.nome)"
+        $form.Refresh()
+
+        if($prog.tipo -eq "msi"){
+            Start-Process msiexec.exe -ArgumentList "/i `"$path`" /qn" -Wait
+        } else {
+            Start-Process $path -ArgumentList "/S" -Wait
+        }
+
+        Remove-Item $path -Force -ErrorAction SilentlyContinue
 
         $progress.Value = [int](($i/$total)*100)
     }
 
     $status.Text = "Concluído!"
-    $btnInstalar.Enabled = $true
-    $btnTodos.Enabled = $true
 }
 
 # ===== EVENTOS =====
@@ -202,5 +199,4 @@ $btnTodos.Add_Click({
     Instalar ($programas.nome)
 })
 
-# ===== EXEC =====
 $form.ShowDialog()
