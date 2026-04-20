@@ -52,8 +52,10 @@ foreach ($prog in $selecionados) {
     Write-Host "Baixando $($prog.nome)..."
 
     try {
+        # Tenta baixar
         Invoke-WebRequest -Uri $prog.url -OutFile $caminho -ErrorAction Stop
         
+        # Verifica se o arquivo existe após baixar
         if (Test-Path $caminho) {
             Write-Host "Abrindo instalador de $($prog.nome)..."
             
@@ -63,13 +65,15 @@ foreach ($prog in $selecionados) {
                 Start-Process $caminho -Wait
             }
             Write-Host "✔ $($prog.nome) finalizado!"
-        } else {
-            Write-Host "❌ Erro: Arquivo não encontrado."
+        } 
+        else {
+            Write-Host "❌ Erro: Arquivo não encontrado no disco."
         }
-    } catch {
-        Write-Host "❌ Falha em $($prog.nome): $($_.Exception.Message)"
+    } 
+    catch {
+        Write-Host "❌ Falha crítica em $($prog.nome): $($_.Exception.Message)"
     }
-}
+} # Fim do Foreach
 
 Write-Host ""
 Write-Host "================================="
