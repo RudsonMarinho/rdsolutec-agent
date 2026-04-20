@@ -58,51 +58,66 @@ $status.Text = "Status: Aguardando..."
 
 $form.Controls.Add($status)
 
-# ===== PROGRESS BAR =====
-$progress = New-Object System.Windows.Forms.ProgressBar
-$progress.Size = New-Object System.Drawing.Size(450,30)
-$progress.Location = New-Object System.Drawing.Point(20,400)
+# ===== PROGRESS BAR INDIVIDUAL =====
+$progressItem = New-Object System.Windows.Forms.ProgressBar
+$progressItem.Size = New-Object System.Drawing.Size(450,20)
+$progressItem.Location = New-Object System.Drawing.Point(20,440)
+$progressItem.Minimum = 0
+$progressItem.Maximum = 100
 
-$form.Controls.Add($progress)
+$form.Controls.Add($progressItem)
 
 # ===== FUNÇÃO INSTALAR =====
-function Instalar($lista) {
+# Reset barras
+$progress.Value = 0
+$progressItem.Value = 0
 
-    $total = $lista.Count
-    $count = 0
+foreach ($item in $lista) {
 
-    foreach ($item in $lista) {
+    $prog = $programas | Where-Object { $_.nome -eq $item }
 
-        $prog = $programas | Where-Object { $_.nome -eq $item }
+    if ($null -eq $prog) { continue }
 
-        if ($null -eq $prog) { continue }
+    $status.Text = "Baixando $($prog.nome)..."
+    $form.Refresh()
 
-        $status.Text = "Baixando $($prog.nome)..."
-        $form.Refresh()
+    $caminho = "$base\$($prog.arquivo)"
 
-        $caminho = "$base\$($prog.arquivo)"
+    try {
 
-        try {
-            Invoke-WebRequest -Uri $prog.url -OutFile $caminho -UseBasicParsing
+        # ===== DOWNLOAD COM PROGRESSO =====
+        $wc = New-Object System.Net.WebClient
 
-            $status.Text = "Instalando $($prog.nome)..."
-            $form.Refresh()
-
-            if ($prog.tipo -eq "msi") {
-                Start-Process "msiexec.exe" -ArgumentList "/i `"$caminho`"" -Wait
-            } else {
-                Start-Process $caminho -Wait
-            }
-
-        } catch {
-            $status.Text = "Erro em $($prog.nome)"
+        $wc.DownloadProgressChanged += {
+            $progressItem.Value = $EventArgs.ProgressPercentage
         }
 
-        $count++
-        $progress.Value = ($count / $total) * 100
+        $wc.DownloadFileAsync([uri]$prog.url, $caminho)
+
+        while ($wc.IsBusy) {
+            [System.Windows.Forms.Application]::DoEvents()
+        }
+
+        # ===== INSTALAÇÃO =====
+        $status.Text = "Instalando $($prog.nome)..."
+        $form.Refresh()
+
+        $progressItem.Value = 0
+
+        if ($prog.tipo -eq "msi") {
+            Start-Process "msiexec.exe" -ArgumentList "/i `"$caminho`"" -Wait
+        } else {
+            Start-Process $caminho -Wait
+        }
+
+        $progressItem.Value = 100
+
+    } catch {
+        $status.Text = "Erro em $($prog.nome)"
     }
 
-    $status.Text = "Finalizado!"
+    $count++
+    $progress.Value = [int](($count / $total) * 100)
 }
 
 # ===== EVENTOS =====
