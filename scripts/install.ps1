@@ -21,7 +21,7 @@ $programas = @(
 
 # ===== FORM =====
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "RD Solutec - Instalador"
+$form.Text = "Pacote de Programas - RD Solutec"
 $form.Size = New-Object System.Drawing.Size(500,550)
 $form.StartPosition = "CenterScreen"
 
@@ -87,7 +87,7 @@ function Instalar($lista) {
         try {
             Invoke-WebRequest -Uri $prog.url -OutFile $caminho -UseBasicParsing
 
-            $status.Text = "Instalando $($prog.nome)..."
+            $status.Text = "Instalando programa $($prog.nome)..."
             $form.Refresh()
 
             if ($prog.tipo -eq "msi") {
@@ -104,7 +104,7 @@ function Instalar($lista) {
         $progress.Value = ($count / $total) * 100
     }
 
-    $status.Text = "Finalizado!"
+    $status.Text = "Programa(s) instalado(s)!"
 }
 
 # ===== EVENTOS =====
@@ -112,7 +112,7 @@ function Instalar($lista) {
 $btnInstalar.Add_Click({
     $selecionados = $checkList.CheckedItems
     if ($selecionados.Count -eq 0) {
-        [System.Windows.Forms.MessageBox]::Show("Selecione pelo menos um programa")
+        [System.Windows.Forms.MessageBox]::Show("Você precisa selecionar pelo menos um programa")
         return
     }
     Instalar $selecionados
