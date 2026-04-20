@@ -1,143 +1,124 @@
-# ===== CONFIG BASE =====
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-
-# ===== ADMIN =====
-$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-$principal = New-Object Security.Principal.WindowsPrincipal($identity)
-
-if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
-    exit
-}
-
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# ===== PROGRAMAS =====
+# ===== CONFIG =====
+$base = "$env:ProgramData\RDSolutec"
+New-Item -ItemType Directory -Path $base -Force | Out-Null
+
 $programas = @(
-    @{ nome="Google Chrome"; check="Chrome"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/ChromeSetup.exe"; tipo="exe" },
-    @{ nome="AnyDesk"; check="AnyDesk"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/AnyDesk.exe"; tipo="exe" },
-    @{ nome="Zoom"; check="Zoom"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/ZoomInstallerFull.exe"; tipo="exe" },
-    @{ nome="Adobe Reader"; check="Adobe"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/Reader_br_install.exe"; tipo="exe" },
-    @{ nome="WinRAR"; check="WinRAR"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/winrar-x64-701br.exe"; tipo="exe" }
+    @{ nome="AnyDesk"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/AnyDesk.exe"; arquivo="AnyDesk.exe"; tipo="exe" },
+    @{ nome="Google Chrome"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/ChromeSetup.exe"; arquivo="ChromeSetup.exe"; tipo="exe" },
+    @{ nome="CTE"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/componente_cte_5.00b.exe"; arquivo="cte.exe"; tipo="exe" },
+    @{ nome="NFA SOFT"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/instalador.exe"; arquivo="instalador.exe"; tipo="exe" },
+    @{ nome="LibreOffice"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/LibreOffice_24.8.4_Win_x86-64.msi"; arquivo="libreoffice.msi"; tipo="msi" },
+    @{ nome="Office 2024"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/microsoft-office-2024-16-0-18025-20140.exe"; arquivo="office.exe"; tipo="exe" },
+    @{ nome="Panda AV"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/PANDAFREEAV.exe"; arquivo="panda.exe"; tipo="exe" },
+    @{ nome="Adobe Reader"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/Reader_br_install.exe"; arquivo="reader.exe"; tipo="exe" },
+    @{ nome="Zoom"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/ZoomInstallerFull.exe"; arquivo="zoom.exe"; tipo="exe" }
 )
 
-$base = "$env:TEMP\rdsolutec"
-
-# ===== DETECTAR INSTALADO =====
-function JaInstalado($nome) {
-    $reg = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"
-    return Get-ItemProperty $reg -ErrorAction SilentlyContinue | Where-Object {
-        $_.DisplayName -like "*$nome*"
-    }
-}
-
-# ===== DOWNLOAD =====
-function Download($url, $dest) {
-    Invoke-WebRequest $url -OutFile $dest -UseBasicParsing
-}
-
-# ===== INSTALAR =====
-function Instalar($selecionados, $statusLabel) {
-
-    foreach ($prog in $selecionados) {
-
-        if (JaInstalado $prog.check) {
-            $statusLabel.Text = "$($prog.nome) já instalado"
-            Start-Sleep 1
-            continue
-        }
-
-        $file = "$base\$($prog.nome).exe"
-
-        $statusLabel.Text = "Downloading $($prog.nome)..."
-        $statusLabel.Refresh()
-
-        try {
-            Download $prog.url $file
-        } catch {
-            $statusLabel.Text = "Erro download $($prog.nome)"
-            continue
-        }
-
-        $statusLabel.Text = "Installing $($prog.nome)..."
-        $statusLabel.Refresh()
-
-        Start-Process $file -ArgumentList "/S" -Wait -ErrorAction SilentlyContinue
-    }
-
-    $statusLabel.Text = "All done ✔"
-}
-
-# ===== UI =====
+# ===== FORM =====
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "RD Solutec Installer"
-$form.Size = New-Object System.Drawing.Size(400,400)
-$form.BackColor = "White"
+$form.Text = "RD Solutec - Instalador"
+$form.Size = New-Object System.Drawing.Size(500,550)
 $form.StartPosition = "CenterScreen"
 
-$title = New-Object System.Windows.Forms.Label
-$title.Text = "Select apps to install"
-$title.Font = New-Object System.Drawing.Font("Segoe UI",12,[System.Drawing.FontStyle]::Bold)
-$title.Location = "20,20"
-$title.Size = "300,30"
-
-$form.Controls.Add($title)
-
-$y = 60
-$checks = @()
+# ===== LISTA =====
+$checkList = New-Object System.Windows.Forms.CheckedListBox
+$checkList.Size = New-Object System.Drawing.Size(450,250)
+$checkList.Location = New-Object System.Drawing.Point(20,20)
 
 foreach ($p in $programas) {
-
-    $chk = New-Object System.Windows.Forms.CheckBox
-    $chk.Text = $p.nome
-    $chk.Location = "20,$y"
-    $chk.Size = "300,25"
-
-    if (JaInstalado $p.check) {
-        $chk.Checked = $false
-        $chk.Enabled = $false
-        $chk.Text += " (já instalado)"
-    }
-
-    $form.Controls.Add($chk)
-    $checks += @{ box=$chk; data=$p }
-
-    $y += 30
+    $checkList.Items.Add($p.nome)
 }
 
-$btn = New-Object System.Windows.Forms.Button
-$btn.Text = "Install"
-$btn.BackColor = "#28A745"
-$btn.ForeColor = "White"
-$btn.Location = "20,$y"
-$btn.Size = "340,40"
+$form.Controls.Add($checkList)
 
-$form.Controls.Add($btn)
+# ===== BOTÃO INSTALAR =====
+$btnInstalar = New-Object System.Windows.Forms.Button
+$btnInstalar.Text = "Instalar Selecionados"
+$btnInstalar.Size = New-Object System.Drawing.Size(200,40)
+$btnInstalar.Location = New-Object System.Drawing.Point(20,300)
 
+$form.Controls.Add($btnInstalar)
+
+# ===== BOTÃO TODOS =====
+$btnTodos = New-Object System.Windows.Forms.Button
+$btnTodos.Text = "Instalar TODOS"
+$btnTodos.Size = New-Object System.Drawing.Size(200,40)
+$btnTodos.Location = New-Object System.Drawing.Point(270,300)
+
+$form.Controls.Add($btnTodos)
+
+# ===== STATUS =====
 $status = New-Object System.Windows.Forms.Label
-$status.Location = "20,$($y+50)"
-$status.Size = "340,30"
+$status.Size = New-Object System.Drawing.Size(450,30)
+$status.Location = New-Object System.Drawing.Point(20,360)
+$status.Text = "Status: Aguardando..."
 
 $form.Controls.Add($status)
 
-# ===== EVENTO =====
-$btn.Add_Click({
+# ===== PROGRESS BAR =====
+$progress = New-Object System.Windows.Forms.ProgressBar
+$progress.Size = New-Object System.Drawing.Size(450,30)
+$progress.Location = New-Object System.Drawing.Point(20,400)
 
-    $selecionados = @()
+$form.Controls.Add($progress)
 
-    foreach ($c in $checks) {
-        if ($c.box.Checked) {
-            $selecionados += $c.data
+# ===== FUNÇÃO INSTALAR =====
+function Instalar($lista) {
+
+    $total = $lista.Count
+    $count = 0
+
+    foreach ($item in $lista) {
+
+        $prog = $programas | Where-Object { $_.nome -eq $item }
+
+        if ($null -eq $prog) { continue }
+
+        $status.Text = "Baixando $($prog.nome)..."
+        $form.Refresh()
+
+        $caminho = "$base\$($prog.arquivo)"
+
+        try {
+            Invoke-WebRequest -Uri $prog.url -OutFile $caminho -UseBasicParsing
+
+            $status.Text = "Instalando $($prog.nome)..."
+            $form.Refresh()
+
+            if ($prog.tipo -eq "msi") {
+                Start-Process "msiexec.exe" -ArgumentList "/i `"$caminho`"" -Wait
+            } else {
+                Start-Process $caminho -Wait
+            }
+
+        } catch {
+            $status.Text = "Erro em $($prog.nome)"
         }
+
+        $count++
+        $progress.Value = ($count / $total) * 100
     }
 
+    $status.Text = "Finalizado!"
+}
+
+# ===== EVENTOS =====
+
+$btnInstalar.Add_Click({
+    $selecionados = $checkList.CheckedItems
     if ($selecionados.Count -eq 0) {
-        [System.Windows.Forms.MessageBox]::Show("Select at least one app")
+        [System.Windows.Forms.MessageBox]::Show("Selecione pelo menos um programa")
         return
     }
-
-    Instalar $selecionados $status
+    Instalar $selecionados
 })
 
+$btnTodos.Add_Click({
+    Instalar ($programas.nome)
+})
+
+# ===== EXECUTAR =====
 $form.ShowDialog()
