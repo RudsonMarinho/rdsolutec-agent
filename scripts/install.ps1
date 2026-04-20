@@ -69,7 +69,7 @@ while ($true) {
 
     MostrarMenu
 
-    $opcao = Read-Host "Digite a opção"
+    $opcao = Read-Host "ESCOLHA O PROGRAMA"
 
     if ($opcao -eq "S" -or $opcao -eq "s") {
         break
