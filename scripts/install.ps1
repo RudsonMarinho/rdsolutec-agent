@@ -20,7 +20,7 @@ $programas = @(
 # ===== FORM =====
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "RD Solutec - Instalador"
-$form.Size = New-Object System.Drawing.Size(500,580)
+$form.Size = New-Object System.Drawing.Size(500,550)
 $form.StartPosition = "CenterScreen"
 
 # ===== LISTA =====
@@ -34,13 +34,14 @@ foreach ($p in $programas) {
 
 $form.Controls.Add($checkList)
 
-# ===== BOTÕES =====
+# ===== BOTÃO INSTALAR =====
 $btnInstalar = New-Object System.Windows.Forms.Button
 $btnInstalar.Text = "Instalar Selecionados"
 $btnInstalar.Size = New-Object System.Drawing.Size(200,40)
 $btnInstalar.Location = New-Object System.Drawing.Point(20,300)
 $form.Controls.Add($btnInstalar)
 
+# ===== BOTÃO TODOS =====
 $btnTodos = New-Object System.Windows.Forms.Button
 $btnTodos.Text = "Instalar TODOS"
 $btnTodos.Size = New-Object System.Drawing.Size(200,40)
@@ -54,30 +55,19 @@ $status.Location = New-Object System.Drawing.Point(20,360)
 $status.Text = "Status: Aguardando..."
 $form.Controls.Add($status)
 
-# ===== PROGRESS TOTAL =====
-$script:progress = New-Object System.Windows.Forms.ProgressBar
-$script:progress.Size = New-Object System.Drawing.Size(450,25)
-$script:progress.Location = New-Object System.Drawing.Point(20,400)
-$script:progress.Minimum = 0
-$script:progress.Maximum = 100
-$form.Controls.Add($script:progress)
-
-# ===== PROGRESS ITEM =====
-$script:progressItem = New-Object System.Windows.Forms.ProgressBar
-$script:progressItem.Size = New-Object System.Drawing.Size(450,20)
-$script:progressItem.Location = New-Object System.Drawing.Point(20,440)
-$script:progressItem.Minimum = 0
-$script:progressItem.Maximum = 100
-$form.Controls.Add($script:progressItem)
+# ===== PROGRESS BAR =====
+$progress = New-Object System.Windows.Forms.ProgressBar
+$progress.Size = New-Object System.Drawing.Size(450,30)
+$progress.Location = New-Object System.Drawing.Point(20,400)
+$progress.Minimum = 0
+$progress.Maximum = 100
+$form.Controls.Add($progress)
 
 # ===== FUNÇÃO INSTALAR =====
 function Instalar($lista) {
 
     $total = $lista.Count
     $count = 0
-
-    $script:progress.Value = 0
-    $script:progressItem.Value = 0
 
     foreach ($item in $lista) {
 
@@ -90,25 +80,10 @@ function Instalar($lista) {
         $caminho = "$base\$($prog.arquivo)"
 
         try {
-            $wc = New-Object System.Net.WebClient
-
-            $wc.DownloadProgressChanged += {
-                $percent = [int]$EventArgs.ProgressPercentage
-                if ($percent -ge 0 -and $percent -le 100) {
-                    $script:progressItem.Value = $percent
-                }
-            }
-
-            $wc.DownloadFileAsync([uri]$prog.url, $caminho)
-
-            while ($wc.IsBusy) {
-                [System.Windows.Forms.Application]::DoEvents()
-            }
+            Invoke-WebRequest -Uri $prog.url -OutFile $caminho -UseBasicParsing
 
             $status.Text = "Instalando $($prog.nome)..."
             $form.Refresh()
-
-            $script:progressItem.Value = 0
 
             if ($prog.tipo -eq "msi") {
                 Start-Process "msiexec.exe" -ArgumentList "/i `"$caminho`"" -Wait
@@ -116,17 +91,16 @@ function Instalar($lista) {
                 Start-Process $caminho -Wait
             }
 
-            $script:progressItem.Value = 100
-
         } catch {
             $status.Text = "Erro em $($prog.nome)"
         }
 
         $count++
-        $totalPercent = [int](($count / $total) * 100)
 
-        if ($totalPercent -le 100) {
-            $script:progress.Value = $totalPercent
+        # ===== PROGRESSO TOTAL =====
+        $percent = [int](($count / $total) * 100)
+        if ($percent -ge 0 -and $percent -le 100) {
+            $progress.Value = $percent
         }
     }
 
@@ -136,10 +110,12 @@ function Instalar($lista) {
 # ===== EVENTOS =====
 $btnInstalar.Add_Click({
     $selecionados = $checkList.CheckedItems
+
     if ($selecionados.Count -eq 0) {
         [System.Windows.Forms.MessageBox]::Show("Selecione pelo menos um programa")
         return
     }
+
     Instalar $selecionados
 })
 
