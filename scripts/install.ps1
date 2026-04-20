@@ -17,17 +17,23 @@ $programas = @(
     @{ id=9; nome="Zoom"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/ZoomInstallerFull.exe"; arquivo="zoom.exe"; tipo="exe" }
 )
 
-function Mostrar-Menu {
+function MostrarMenu {
     Write-Host ""
     Write-Host "Selecione uma opção:"
     foreach ($p in $programas) {
-        Write-Host "$($p.id) - Instalar $($p.nome)"
+        Write-Host "$($p.id) - $($p.nome)"
     }
     Write-Host "0 - Instalar TODOS"
     Write-Host "S - Sair"
 }
 
-function Instalar-Programa($prog) {
+function InstalarPrograma {
+    param ($prog)
+
+    if ($null -eq $prog) {
+        Write-Host "Programa inválido"
+        return
+    }
 
     $caminho = "$base\$($prog.arquivo)"
 
@@ -39,58 +45,53 @@ function Instalar-Programa($prog) {
 
         if (Test-Path $caminho) {
 
-            Write-Host "Abrindo instalador de $($prog.nome)..."
+            Write-Host "Executando $($prog.nome)..."
 
             if ($prog.tipo -eq "msi") {
                 Start-Process "msiexec.exe" -ArgumentList "/i `"$caminho`"" -Wait
-            } else {
+            }
+            else {
                 Start-Process $caminho -Wait
             }
 
-            Write-Host "✔ $($prog.nome) finalizado!"
+            Write-Host "OK - $($prog.nome)"
         }
         else {
-            Write-Host "❌ Falha no download: $($prog.nome)"
+            Write-Host "Erro no download"
         }
-
     }
     catch {
-        Write-Host "❌ Erro em $($prog.nome): $_"
+        Write-Host "Erro: $_"
     }
 }
 
-# LOOP PRINCIPAL
 while ($true) {
 
-    Mostrar-Menu
+    MostrarMenu
 
-    $opcao = Read-Host "Digite sua opção"
+    $opcao = Read-Host "Digite a opção"
 
     if ($opcao -eq "S" -or $opcao -eq "s") {
-        Write-Host "Encerrando..."
         break
     }
 
-    elseif ($opcao -eq "0") {
-        foreach ($prog in $programas) {
-            Instalar-Programa $prog
+    if ($opcao -eq "0") {
+        foreach ($p in $programas) {
+            InstalarPrograma $p
         }
+        continue
     }
 
-    else {
-        $selecionado = $programas | Where-Object { $_.id.ToString() -eq $opcao }
+    $prog = $programas | Where-Object { $_.id -eq [int]$opcao }
 
-        if ($null -ne $selecionado) {
-            Instalar-Programa $selecionado
-        } else {
-            Write-Host "❌ Opção inválida!"
-        }
+    if ($prog) {
+        InstalarPrograma $prog
+    }
+    else {
+        Write-Host "Opção inválida"
     }
 }
 
 Write-Host ""
-Write-Host "================================="
-Write-Host "✔ Script finalizado"
-Write-Host "================================="
-
-Read-Host "Pressione ENTER para fechar"
+Write-Host "Finalizado"
+Read-Host "Pressione ENTER para sair"
