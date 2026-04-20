@@ -23,7 +23,7 @@ foreach ($p in $programas) {
 }
 
 Write-Host "0 - Todos"
-$input = Read-Host "Opção"
+$input = Read-Host "DIGITAR NUMERO"
 
 if ($input -eq "0") {
     $selecionados = $programas
