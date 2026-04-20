@@ -1,4 +1,5 @@
-$downloadUrl = https://github.com/RudsonMarinho/rdsolutec-agent/releases/latest/download/agent.exe
+$downloadUrl = https://github.com/RudsonMarinho/rdsolutec-agent/releases/latest/download/componente_cte_5.00b.exe
+
 $destino = "$env:ProgramData\RDSolutec\agent.exe"
 
 Invoke-WebRequest -Uri $downloadUrl -OutFile $destino
@@ -12,7 +13,8 @@ Write-Host "================================="
 
 $destino = "$env:ProgramData\RDSolutec"
 $arquivo = "$destino\agent.exe"
-$url = https://github.com/RudsonMarinho/rdsolutec-agent/releases/latest/download/agent.exe
+$url = https://github.com/RudsonMarinho/rdsolutec-agent/releases/latest/download/componente_cte_5.00b.exe
+
 
 # Criar pasta
 if (!(Test-Path $destino)) {
