@@ -1,4 +1,4 @@
-$downloadUrl = "https://github.com/SEU-USUARIO/rdsolutec-agent/releases/latest/download/agent.exe"
+$downloadUrl = "https://github.com/RudsonMarinho/rdsolutec-agent/releases/latest/download/agent.exe"
 $destino = "$env:ProgramData\RDSolutec\agent.exe"
 
 Invoke-WebRequest -Uri $downloadUrl -OutFile $destino
