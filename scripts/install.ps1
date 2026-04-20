@@ -36,8 +36,8 @@ $form = New-Object System.Windows.Forms.Form
 $form.Text = "Pacote de Programas - RD Solutec"
 $form.Size = New-Object System.Drawing.Size(500,600)
 $form.StartPosition = "CenterScreen"
-$form.BackColor = "#2b2b2b"
-$form.ForeColor = "White"
+$form.BackColor = "White"
+$form.ForeColor = "Black"
 
 # ===== TITULO =====
 $labelTitulo = New-Object System.Windows.Forms.Label
@@ -50,8 +50,8 @@ $form.Controls.Add($labelTitulo)
 $checkList = New-Object System.Windows.Forms.CheckedListBox
 $checkList.Size = New-Object System.Drawing.Size(450,250)
 $checkList.Location = New-Object System.Drawing.Point(20,40)
-$checkList.BackColor = "#3c3c3c"
-$checkList.ForeColor = "White"
+$checkList.BackColor = "White"
+$checkList.ForeColor = "Black"
 
 foreach ($p in $programas) {
     $checkList.Items.Add($p.nome)
