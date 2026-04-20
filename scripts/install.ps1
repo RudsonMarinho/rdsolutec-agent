@@ -3,7 +3,6 @@ Write-Host " RD SOLUTEC - INSTALADOR"
 Write-Host "================================="
 
 $base = "$env:ProgramData\RDSolutec"
-# Garante que a pasta base exista
 if (!(Test-Path $base)) {
     New-Item -ItemType Directory -Path $base -Force | Out-Null
 }
@@ -46,33 +45,29 @@ if ($escolha -eq "0") {
 
 # INSTALAÇÃO
 foreach ($prog in $selecionados) {
-
     $caminho = Join-Path $base $prog.arquivo
-
+    
     Write-Host ""
     Write-Host "---------------------------------"
     Write-Host "Baixando $($prog.nome)..."
 
     try {
-        # Download do arquivo
         Invoke-WebRequest -Uri $prog.url -OutFile $caminho -ErrorAction Stop
-
+        
         if (Test-Path $caminho) {
             Write-Host "Abrindo instalador de $($prog.nome)..."
-
+            
             if ($prog.tipo -eq "msi") {
                 Start-Process "msiexec.exe" -ArgumentList "/i `"$caminho`" /passive" -Wait
             } else {
                 Start-Process $caminho -Wait
             }
-
             Write-Host "✔ $($prog.nome) finalizado!"
         } else {
-            Write-Host "❌ Erro: O arquivo não foi encontrado após o download."
+            Write-Host "❌ Erro: Arquivo não encontrado."
         }
-    }
-    catch {
-        Write-Host "❌ Falha crítica em $($prog.nome): $($_.Exception.Message)"
+    } catch {
+        Write-Host "❌ Falha em $($prog.nome): $($_.Exception.Message)"
     }
 }
 
