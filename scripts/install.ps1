@@ -1,13 +1,12 @@
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# ===== ADMIN CHECK =====
+# ===== ADMIN =====
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    $scriptPath = $MyInvocation.MyCommand.Path
-    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$scriptPath`"" -Verb RunAs
+    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
     exit
 }
 
@@ -42,7 +41,9 @@ $checkList = New-Object System.Windows.Forms.CheckedListBox
 $checkList.Size = New-Object System.Drawing.Size(550,200)
 $checkList.Location = New-Object System.Drawing.Point(20,20)
 
-foreach ($p in $programas) { $checkList.Items.Add($p.nome) }
+foreach ($p in $programas) {
+    [void]$checkList.Items.Add($p.nome)
+}
 
 $form.Controls.Add($checkList)
 
@@ -53,13 +54,6 @@ $btnSelecionar.BackColor = "#0078D7"
 $btnSelecionar.ForeColor = "White"
 $btnSelecionar.Location = New-Object System.Drawing.Point(20,240)
 $btnSelecionar.Size = New-Object System.Drawing.Size(170,40)
-
-$btnSelecionar.Add_Click({
-    for ($i=0; $i -lt $checkList.Items.Count; $i++) {
-        $checkList.SetItemChecked($i,$true)
-    }
-})
-
 $form.Controls.Add($btnSelecionar)
 
 $btnInstalar = New-Object System.Windows.Forms.Button
@@ -68,7 +62,6 @@ $btnInstalar.BackColor = "#28A745"
 $btnInstalar.ForeColor = "White"
 $btnInstalar.Location = New-Object System.Drawing.Point(210,240)
 $btnInstalar.Size = New-Object System.Drawing.Size(170,40)
-
 $form.Controls.Add($btnInstalar)
 
 $btnTodos = New-Object System.Windows.Forms.Button
@@ -77,7 +70,6 @@ $btnTodos.BackColor = "#28A745"
 $btnTodos.ForeColor = "White"
 $btnTodos.Location = New-Object System.Drawing.Point(400,240)
 $btnTodos.Size = New-Object System.Drawing.Size(170,40)
-
 $form.Controls.Add($btnTodos)
 
 # ===== STATUS =====
@@ -104,91 +96,70 @@ $info.Size = New-Object System.Drawing.Size(550,20)
 $form.Controls.Add($info)
 
 # ===== DOWNLOAD =====
-function Download-File($url,$destino){
+function Download-File {
+    param($url, $destino)
 
     $wc = New-Object System.Net.WebClient
-    $lastBytes = 0
-    $lastTime = Get-Date
 
     $wc.DownloadProgressChanged += {
         $progressDownload.Value = $_.ProgressPercentage
-
-        $now = Get-Date
-        $elapsed = ($now - $lastTime).TotalSeconds
-
-        if($elapsed -gt 0){
-            $bytes = $_.BytesReceived
-            $speed = ($bytes - $lastBytes)/$elapsed
-            $speedKB = [math]::Round($speed/1KB,2)
-
-            if($speed -gt 0){
-                $remaining = ($_.TotalBytesToReceive - $bytes)/$speed
-                $eta = [TimeSpan]::FromSeconds($remaining).ToString("mm\:ss")
-            } else {
-                $eta = "--:--"
-            }
-
-            $info.Text = "$speedKB KB/s | ETA: $eta"
-
-            $lastBytes = $bytes
-            $lastTime = $now
-        }
-
         $form.Refresh()
     }
 
-    $wc.DownloadFileAsync($url,$destino)
+    $wc.DownloadFileAsync($url, $destino)
 
-    while($wc.IsBusy){
+    while ($wc.IsBusy) {
         [System.Windows.Forms.Application]::DoEvents()
         Start-Sleep -Milliseconds 100
     }
 
     $progressDownload.Value = 0
-    $info.Text = ""
 }
 
 # ===== INSTALAR =====
-function Instalar($lista){
+function Instalar {
+    param($lista)
 
     $total = $lista.Count
     $i = 0
 
-    foreach($item in $lista){
+    foreach ($item in $lista) {
 
         $i++
         $prog = $programas | Where-Object { $_.nome -eq $item }
-        if(!$prog){continue}
+        if ($null -eq $prog) { continue }
 
         $path = "$base\$($prog.arquivo)"
 
         $status.Text = "[$i/$total] Baixando $($prog.nome)"
         $form.Refresh()
 
-        if(!(Test-Path $path)){
-            Download-File $prog.url $path
-        }
+        Download-File $prog.url $path
 
         $status.Text = "[$i/$total] Instalando $($prog.nome)"
         $form.Refresh()
 
-        if($prog.tipo -eq "msi"){
-            Start-Process msiexec.exe -ArgumentList "/i `"$path`" /qn" -Wait
+        if ($prog.tipo -eq "msi") {
+            Start-Process "msiexec.exe" -ArgumentList "/i `"$path`" /qn" -Wait
         } else {
             Start-Process $path -ArgumentList "/S" -Wait
         }
 
-        Remove-Item $path -Force -ErrorAction SilentlyContinue
-
-        $progress.Value = [int](($i/$total)*100)
+        $progress.Value = [int](($i / $total) * 100)
     }
 
     $status.Text = "Concluído!"
 }
 
 # ===== EVENTOS =====
+$btnSelecionar.Add_Click({
+    for ($i = 0; $i -lt $checkList.Items.Count; $i++) {
+        $checkList.SetItemChecked($i, $true)
+    }
+})
+
 $btnInstalar.Add_Click({
-    if($checkList.CheckedItems.Count -eq 0){
+    if ($checkList.CheckedItems.Count -eq 0) {
         [System.Windows.Forms.MessageBox]::Show("Selecione ao menos um programa")
         return
     }
@@ -199,4 +170,5 @@ $btnTodos.Add_Click({
     Instalar ($programas.nome)
 })
 
+# ===== EXEC =====
 $form.ShowDialog()
