@@ -3,7 +3,7 @@ $destino = "$env:ProgramData\RDSolutec\agent.exe"
 
 Invoke-WebRequest -Uri $downloadUrl -OutFile $destino
 
-Start-Process -FilePath $destino -ArgumentList "/silent" -Wait
+Start-Process -FilePath $arquivo -Wait
 
 
 Write-Host "================================="
