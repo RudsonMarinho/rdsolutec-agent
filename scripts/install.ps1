@@ -1,20 +1,36 @@
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+# ===== SEGURANÇA =====
+try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+} catch {}
 
 # ===== ADMIN =====
-$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-$principal = New-Object Security.Principal.WindowsPrincipal($identity)
+function Test-Admin {
+    try {
+        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+        $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+        return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    } catch { return $false }
+}
 
-if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+if (-not (Test-Admin)) {
     Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
     exit
+}
+
+# ===== TESTE GUI =====
+$guiOK = $true
+try {
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
+} catch {
+    $guiOK = $false
 }
 
 # ===== CONFIG =====
 $base = "$env:ProgramData\RDSolutec"
 New-Item -ItemType Directory -Path $base -Force | Out-Null
 
-# ===== PROGRAMAS =====
+# ===== LISTA COMPLETA =====
 $programas = @(
     @{ nome="AnyDesk"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/AnyDesk.exe"; arquivo="AnyDesk.exe"; tipo="exe" },
     @{ nome="Google Chrome"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/ChromeSetup.exe"; arquivo="ChromeSetup.exe"; tipo="exe" },
@@ -29,78 +45,16 @@ $programas = @(
     @{ nome="Whatsapp"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/WhatsApp.exe"; arquivo="Whatsapp.exe"; tipo="exe" }
 )
 
-# ===== FORM =====
-$form = New-Object System.Windows.Forms.Form
-$form.Text = "RD Solutec - Instalador"
-$form.Size = New-Object System.Drawing.Size(600,520)
-$form.StartPosition = "CenterScreen"
-$form.BackColor = "White"
-
-# ===== LISTA =====
-$checkList = New-Object System.Windows.Forms.CheckedListBox
-$checkList.Size = New-Object System.Drawing.Size(550,200)
-$checkList.Location = New-Object System.Drawing.Point(20,20)
-
-foreach ($p in $programas) {
-    [void]$checkList.Items.Add($p.nome)
-}
-
-$form.Controls.Add($checkList)
-
-# ===== BOTÕES =====
-$btnSelecionar = New-Object System.Windows.Forms.Button
-$btnSelecionar.Text = "Selecionar Todos"
-$btnSelecionar.BackColor = "#0078D7"
-$btnSelecionar.ForeColor = "White"
-$btnSelecionar.Location = New-Object System.Drawing.Point(20,240)
-$btnSelecionar.Size = New-Object System.Drawing.Size(170,40)
-$form.Controls.Add($btnSelecionar)
-
-$btnInstalar = New-Object System.Windows.Forms.Button
-$btnInstalar.Text = "Instalar Selecionados"
-$btnInstalar.BackColor = "#28A745"
-$btnInstalar.ForeColor = "White"
-$btnInstalar.Location = New-Object System.Drawing.Point(210,240)
-$btnInstalar.Size = New-Object System.Drawing.Size(170,40)
-$form.Controls.Add($btnInstalar)
-
-$btnTodos = New-Object System.Windows.Forms.Button
-$btnTodos.Text = "Instalar Todos"
-$btnTodos.BackColor = "#28A745"
-$btnTodos.ForeColor = "White"
-$btnTodos.Location = New-Object System.Drawing.Point(400,240)
-$btnTodos.Size = New-Object System.Drawing.Size(170,40)
-$form.Controls.Add($btnTodos)
-
-# ===== STATUS =====
-$status = New-Object System.Windows.Forms.Label
-$status.Location = New-Object System.Drawing.Point(20,290)
-$status.Size = New-Object System.Drawing.Size(550,25)
-$status.Text = "Aguardando..."
-$form.Controls.Add($status)
-
-# ===== PROGRESS =====
-$progress = New-Object System.Windows.Forms.ProgressBar
-$progress.Location = New-Object System.Drawing.Point(20,320)
-$progress.Size = New-Object System.Drawing.Size(550,20)
-$form.Controls.Add($progress)
-
-$progressDownload = New-Object System.Windows.Forms.ProgressBar
-$progressDownload.Location = New-Object System.Drawing.Point(20,350)
-$progressDownload.Size = New-Object System.Drawing.Size(550,20)
-$form.Controls.Add($progressDownload)
-
-$info = New-Object System.Windows.Forms.Label
-$info.Location = New-Object System.Drawing.Point(20,380)
-$info.Size = New-Object System.Drawing.Size(550,20)
-$form.Controls.Add($info)
-
-# ===== DOWNLOAD =====
+# ===== DOWNLOAD ESTÁVEL =====
 function Download-File {
     param($url, $destino)
 
-    $request = [System.Net.HttpWebRequest]::Create($url)
-    $response = $request.GetResponse()
+    try {
+        $request = [System.Net.HttpWebRequest]::Create($url)
+        $response = $request.GetResponse()
+    } catch {
+        throw "Erro ao baixar: $url"
+    }
 
     $total = $response.ContentLength
     $stream = $response.GetResponseStream()
@@ -108,85 +62,129 @@ function Download-File {
 
     $buffer = New-Object byte[] 8192
     $totalRead = 0
-    $startTime = Get-Date
 
     while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
-
         $file.Write($buffer, 0, $read)
         $totalRead += $read
 
-        # progresso
         if ($total -gt 0) {
             $percent = [int](($totalRead / $total) * 100)
-            $progressDownload.Value = $percent
+            Write-Progress -Activity "Baixando $url" -PercentComplete $percent
         }
+    }
 
-        # velocidade + ETA
-        $elapsed = (Get-Date) - $startTime
-        if ($elapsed.TotalSeconds -gt 0) {
-            $speed = $totalRead / $elapsed.TotalSeconds
-            $speedKB = [math]::Round($speed / 1KB, 2)
+    $file.Close()
+    $stream.Close()
+    $response.Close()
+}
 
-            if ($speed -gt 0 -and $total -gt 0) {
-                $remaining = ($total - $totalRead) / $speed
-                $eta = [TimeSpan]::FromSeconds($remaining).ToString("mm\:ss")
-            } else {
-                $eta = "--:--"
-            }
+# ===== CONSOLE =====
+function Instalar-Console {
 
-# ===== INSTALAR =====
-function Instalar {
-    param($lista)
-
-    $total = $lista.Count
     $i = 0
+    $total = $programas.Count
 
-    foreach ($item in $lista) {
+    foreach ($prog in $programas) {
 
         $i++
-        $prog = $programas | Where-Object { $_.nome -eq $item }
-        if ($null -eq $prog) { continue }
-
         $path = "$base\$($prog.arquivo)"
 
-        $status.Text = "[$i/$total] Baixando $($prog.nome)"
-        $form.Refresh()
+        Write-Host "[$i/$total] Baixando $($prog.nome)"
 
-        Download-File $prog.url $path
+        try {
+            Download-File $prog.url $path
+        } catch {
+            Write-Host "Erro download: $($prog.nome)" -ForegroundColor Red
+            continue
+        }
 
-        $status.Text = "[$i/$total] Instalando $($prog.nome)"
-        $form.Refresh()
+        Write-Host "Instalando $($prog.nome)..."
 
         if ($prog.tipo -eq "msi") {
-            Start-Process "msiexec.exe" -ArgumentList "/i `"$path`" /qn" -Wait
+            Start-Process msiexec.exe -ArgumentList "/i `"$path`" /qn" -Wait
         } else {
             Start-Process $path -ArgumentList "/S" -Wait
         }
-
-        $progress.Value = [int](($i / $total) * 100)
     }
 
-    $status.Text = "Concluído!"
+    Write-Host "Finalizado!"
+    pause
 }
 
-# ===== EVENTOS =====
-$btnSelecionar.Add_Click({
-    for ($i = 0; $i -lt $checkList.Items.Count; $i++) {
-        $checkList.SetItemChecked($i, $true)
-    }
-})
+# ===== GUI =====
+function Instalar-GUI {
 
-$btnInstalar.Add_Click({
-    if ($checkList.CheckedItems.Count -eq 0) {
-        [System.Windows.Forms.MessageBox]::Show("Selecione ao menos um programa")
-        return
-    }
-    Instalar $checkList.CheckedItems
-})
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = "RD Solutec"
+    $form.Size = New-Object System.Drawing.Size(520,420)
+    $form.StartPosition = "CenterScreen"
 
-$btnTodos.Add_Click({
-    Instalar ($programas.nome)
-})
+    $list = New-Object System.Windows.Forms.CheckedListBox
+    $list.Size = New-Object System.Drawing.Size(470,220)
+    $list.Location = New-Object System.Drawing.Point(20,20)
+
+    foreach ($p in $programas) {
+        [void]$list.Items.Add($p.nome)
+    }
+
+    $form.Controls.Add($list)
+
+    $btn = New-Object System.Windows.Forms.Button
+    $btn.Text = "Instalar"
+    $btn.Location = New-Object System.Drawing.Point(20,260)
+
+    $status = New-Object System.Windows.Forms.Label
+    $status.Location = New-Object System.Drawing.Point(20,300)
+    $status.Size = New-Object System.Drawing.Size(450,30)
+
+    $form.Controls.Add($btn)
+    $form.Controls.Add($status)
+
+    $btn.Add_Click({
+
+        if ($list.CheckedItems.Count -eq 0) {
+            [System.Windows.Forms.MessageBox]::Show("Selecione ao menos um programa")
+            return
+        }
+
+        $total = $list.CheckedItems.Count
+        $i = 0
+
+        foreach ($item in $list.CheckedItems) {
+
+            $i++
+            $prog = $programas | Where-Object { $_.nome -eq $item }
+            $path = "$base\$($prog.arquivo)"
+
+            $status.Text = "[$i/$total] Baixando $($prog.nome)"
+            $form.Refresh()
+
+            try {
+                Download-File $prog.url $path
+            } catch {
+                $status.Text = "Erro download"
+                continue
+            }
+
+            $status.Text = "Instalando $($prog.nome)"
+            $form.Refresh()
+
+            if ($prog.tipo -eq "msi") {
+                Start-Process msiexec.exe -ArgumentList "/i `"$path`" /qn" -Wait
+            } else {
+                Start-Process $path -ArgumentList "/S" -Wait
+            }
+        }
+
+        $status.Text = "Concluído!"
+    })
+
+    $form.ShowDialog()
+}
 
 # ===== EXEC =====
-$form.ShowDialog()
+if ($guiOK) {
+    Instalar-GUI
+} else {
+    Instalar-Console
+}
