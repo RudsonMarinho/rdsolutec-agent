@@ -92,20 +92,71 @@ $status.Text = "Aguardando..."
 $form.Controls.Add($status)
 
 # ===== PROGRESS REAL =====
+# ===== PROGRESS (GERAL) =====
 $progress = New-Object System.Windows.Forms.ProgressBar
-$progress.Size = New-Object System.Drawing.Size(550,30)
+$progress.Size = New-Object System.Drawing.Size(550,25)
 $progress.Location = New-Object System.Drawing.Point(20,360)
 $form.Controls.Add($progress)
+
+# ===== PROGRESS (DOWNLOAD ATUAL) =====
+$progressDownload = New-Object System.Windows.Forms.ProgressBar
+$progressDownload.Size = New-Object System.Drawing.Size(550,25)
+$progressDownload.Location = New-Object System.Drawing.Point(20,395)
+$form.Controls.Add($progressDownload)
+
+# ===== LABEL INFO DOWNLOAD =====
+$labelDownloadInfo = New-Object System.Windows.Forms.Label
+$labelDownloadInfo.Size = New-Object System.Drawing.Size(550,20)
+$labelDownloadInfo.Location = New-Object System.Drawing.Point(20,425)
+$labelDownloadInfo.Text = ""
+$form.Controls.Add($labelDownloadInfo)
 
 # ===== DOWNLOAD COM PROGRESSO REAL =====
 function Download-File($url, $destino) {
     $webClient = New-Object System.Net.WebClient
 
+    $startTime = Get-Date
+    $lastBytes = 0
+    $lastTime = $startTime
+
     $webClient.DownloadProgressChanged += {
-        $progress.Value = $_.ProgressPercentage
-        $status.Text = "Baixando... $($_.ProgressPercentage)%"
+        $progressDownload.Value = $_.ProgressPercentage
+
+        $currentTime = Get-Date
+        $elapsed = ($currentTime - $lastTime).TotalSeconds
+        if ($elapsed -gt 0) {
+            $bytesNow = $_.BytesReceived
+            $speed = ($bytesNow - $lastBytes) / $elapsed
+            $speedKB = [math]::Round($speed / 1KB, 2)
+
+            $totalBytes = $_.TotalBytesToReceive
+            if ($speed -gt 0) {
+                $remainingBytes = $totalBytes - $bytesNow
+                $secondsRemaining = $remainingBytes / $speed
+                $eta = [TimeSpan]::FromSeconds($secondsRemaining).ToString("mm\:ss")
+            } else {
+                $eta = "--:--"
+            }
+
+            $labelDownloadInfo.Text = "${speedKB} KB/s | ETA: $eta"
+
+            $lastBytes = $bytesNow
+            $lastTime = $currentTime
+        }
+
         $form.Refresh()
     }
+
+    $webClient.DownloadFileAsync($url, $destino)
+
+    while ($webClient.IsBusy) {
+        [System.Windows.Forms.Application]::DoEvents()
+        Start-Sleep -Milliseconds 100
+    }
+
+    $progressDownload.Value = 0
+    $labelDownloadInfo.Text = ""
+}
 
     $webClient.DownloadFileAsync($url, $destino)
 
