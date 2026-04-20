@@ -99,22 +99,40 @@ $form.Controls.Add($info)
 function Download-File {
     param($url, $destino)
 
-    $wc = New-Object System.Net.WebClient
+    $request = [System.Net.HttpWebRequest]::Create($url)
+    $response = $request.GetResponse()
 
-    $wc.DownloadProgressChanged += {
-        $progressDownload.Value = $_.ProgressPercentage
-        $form.Refresh()
-    }
+    $total = $response.ContentLength
+    $stream = $response.GetResponseStream()
+    $file = [System.IO.File]::Create($destino)
 
-    $wc.DownloadFileAsync($url, $destino)
+    $buffer = New-Object byte[] 8192
+    $totalRead = 0
+    $startTime = Get-Date
 
-    while ($wc.IsBusy) {
-        [System.Windows.Forms.Application]::DoEvents()
-        Start-Sleep -Milliseconds 100
-    }
+    while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
 
-    $progressDownload.Value = 0
-}
+        $file.Write($buffer, 0, $read)
+        $totalRead += $read
+
+        # progresso
+        if ($total -gt 0) {
+            $percent = [int](($totalRead / $total) * 100)
+            $progressDownload.Value = $percent
+        }
+
+        # velocidade + ETA
+        $elapsed = (Get-Date) - $startTime
+        if ($elapsed.TotalSeconds -gt 0) {
+            $speed = $totalRead / $elapsed.TotalSeconds
+            $speedKB = [math]::Round($speed / 1KB, 2)
+
+            if ($speed -gt 0 -and $total -gt 0) {
+                $remaining = ($total - $totalRead) / $speed
+                $eta = [TimeSpan]::FromSeconds($remaining).ToString("mm\:ss")
+            } else {
+                $eta = "--:--"
+            }
 
 # ===== INSTALAR =====
 function Instalar {
