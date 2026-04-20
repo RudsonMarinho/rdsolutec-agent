@@ -1,11 +1,13 @@
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# ===== ADMIN CHECK =====
-if (-not ([Security.Principal.WindowsPrincipal] 
-[Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
-[Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+# ===== ADMIN CHECK (CORRIGIDO) =====
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = New-Object Security.Principal.WindowsPrincipal($identity)
+
+if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    $scriptPath = $MyInvocation.MyCommand.Path
+    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$scriptPath`"" -Verb RunAs
     exit
 }
 
@@ -57,7 +59,7 @@ foreach ($p in $programas) {
 
 $form.Controls.Add($checkList)
 
-# ===== BOTÕES =====
+# ===== BOTÃO SELECIONAR TODOS =====
 $btnSelecionarTodos = New-Object System.Windows.Forms.Button
 $btnSelecionarTodos.Text = "Selecionar Todos"
 $btnSelecionarTodos.Size = New-Object System.Drawing.Size(200,30)
@@ -68,8 +70,10 @@ $btnSelecionarTodos.Add_Click({
         $checkList.SetItemChecked($i, $true)
     }
 })
+
 $form.Controls.Add($btnSelecionarTodos)
 
+# ===== BOTÕES =====
 $btnInstalar = New-Object System.Windows.Forms.Button
 $btnInstalar.Text = "Instalar Selecionados"
 $btnInstalar.Size = New-Object System.Drawing.Size(200,40)
@@ -97,6 +101,7 @@ $form.Controls.Add($progress)
 
 # ===== FUNÇÃO =====
 function Instalar($lista) {
+
     $btnInstalar.Enabled = $false
     $btnTodos.Enabled = $false
 
@@ -104,6 +109,7 @@ function Instalar($lista) {
     $count = 0
 
     foreach ($item in $lista) {
+
         $prog = $programas | Where-Object { $_.nome -eq $item }
         if ($null -eq $prog) { continue }
 
@@ -118,7 +124,7 @@ function Instalar($lista) {
 
             Add-Content $log "Instalando $($prog.nome) - $(Get-Date)"
 
-            $status.Text = "Instalando $($prog.nome)... ($count de $total)"
+            $status.Text = "Instalando $($prog.nome)... ($($count+1) de $total)"
             $form.Refresh()
 
             if ($prog.tipo -eq "msi") {
@@ -127,7 +133,7 @@ function Instalar($lista) {
                 Start-Process $caminho -ArgumentList "/S" -Wait
             }
 
-            Remove-Item $caminho -Force
+            Remove-Item $caminho -Force -ErrorAction SilentlyContinue
 
         } catch {
             $status.Text = "Erro em $($prog.nome): $($_.Exception.Message)"
