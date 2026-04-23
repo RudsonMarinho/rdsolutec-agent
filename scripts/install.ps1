@@ -3,17 +3,8 @@ Add-Type -AssemblyName System.Drawing
 
 # ===== CONFIG =====
 $base = "$env:ProgramData\RDSolutec"
-$logFile = "$base\install.log"
-
 New-Item -ItemType Directory -Path $base -Force | Out-Null
 
-# ===== LOG =====
-function Write-Log($msg) {
-    $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    "$time - $msg" | Out-File -Append -FilePath $logFile
-}
-
-# ===== PROGRAMAS =====
 $programas = @(
     @{ nome="AnyDesk"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/AnyDesk.exe"; arquivo="AnyDesk.exe"; tipo="exe" },
     @{ nome="Google Chrome"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/ChromeSetup.exe"; arquivo="ChromeSetup.exe"; tipo="exe" },
@@ -28,18 +19,14 @@ $programas = @(
 
 # ===== FORM =====
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "RD Solutec - Instalador Profissional"
-$form.Size = New-Object System.Drawing.Size(520,600)
+$form.Text = "RD Solutec - Instalador"
+$form.Size = New-Object System.Drawing.Size(500,550)
 $form.StartPosition = "CenterScreen"
-$form.BackColor = "#1E1E1E"
-$form.ForeColor = "White"
 
 # ===== LISTA =====
 $checkList = New-Object System.Windows.Forms.CheckedListBox
-$checkList.Size = New-Object System.Drawing.Size(460,250)
+$checkList.Size = New-Object System.Drawing.Size(450,250)
 $checkList.Location = New-Object System.Drawing.Point(20,20)
-$checkList.BackColor = "#2D2D30"
-$checkList.ForeColor = "White"
 
 foreach ($p in $programas) {
     $checkList.Items.Add($p.nome)
@@ -47,46 +34,34 @@ foreach ($p in $programas) {
 
 $form.Controls.Add($checkList)
 
-# ===== BOTÕES =====
-function CriarBotao($texto, $x, $y) {
-    $btn = New-Object System.Windows.Forms.Button
-    $btn.Text = $texto
-    $btn.Size = New-Object System.Drawing.Size(200,40)
-    $btn.Location = New-Object System.Drawing.Point($x,$y)
-    $btn.BackColor = "#007ACC"
-    $btn.ForeColor = "White"
-    return $btn
-}
-
-$btnInstalar = CriarBotao "Instalar Selecionados" 20 300
-$btnTodos = CriarBotao "Instalar TODOS" 270 300
-
+# ===== BOTÃO INSTALAR =====
+$btnInstalar = New-Object System.Windows.Forms.Button
+$btnInstalar.Text = "Instalar Selecionados"
+$btnInstalar.Size = New-Object System.Drawing.Size(200,40)
+$btnInstalar.Location = New-Object System.Drawing.Point(20,300)
 $form.Controls.Add($btnInstalar)
+
+# ===== BOTÃO TODOS =====
+$btnTodos = New-Object System.Windows.Forms.Button
+$btnTodos.Text = "Instalar TODOS"
+$btnTodos.Size = New-Object System.Drawing.Size(200,40)
+$btnTodos.Location = New-Object System.Drawing.Point(270,300)
 $form.Controls.Add($btnTodos)
 
 # ===== STATUS =====
 $status = New-Object System.Windows.Forms.Label
-$status.Size = New-Object System.Drawing.Size(460,30)
+$status.Size = New-Object System.Drawing.Size(450,30)
 $status.Location = New-Object System.Drawing.Point(20,360)
 $status.Text = "Status: Aguardando..."
 $form.Controls.Add($status)
 
-# ===== PROGRESS =====
+# ===== PROGRESS BAR =====
 $progress = New-Object System.Windows.Forms.ProgressBar
-$progress.Size = New-Object System.Drawing.Size(460,30)
+$progress.Size = New-Object System.Drawing.Size(450,30)
 $progress.Location = New-Object System.Drawing.Point(20,400)
+$progress.Minimum = 0
+$progress.Maximum = 100
 $form.Controls.Add($progress)
-
-# ===== FUNÇÃO DOWNLOAD =====
-function Baixar-Arquivo($url, $destino) {
-    try {
-        Invoke-WebRequest -Uri $url -OutFile $destino -UseBasicParsing
-        return $true
-    } catch {
-        Write-Log "Erro ao baixar: $url"
-        return $false
-    }
-}
 
 # ===== FUNÇÃO INSTALAR =====
 function Instalar($lista) {
@@ -99,41 +74,37 @@ function Instalar($lista) {
         $prog = $programas | Where-Object { $_.nome -eq $item }
         if ($null -eq $prog) { continue }
 
-        $caminho = "$base\$($prog.arquivo)"
-
         $status.Text = "Baixando $($prog.nome)..."
         $form.Refresh()
-        Write-Log "Baixando $($prog.nome)"
 
-        if (-not (Test-Path $caminho)) {
-            $ok = Baixar-Arquivo $prog.url $caminho
-            if (-not $ok) {
-                $status.Text = "Erro no download: $($prog.nome)"
-                continue
-            }
-        }
-
-        $status.Text = "Instalando $($prog.nome)..."
-        $form.Refresh()
-        Write-Log "Instalando $($prog.nome)"
+        $caminho = "$base\$($prog.arquivo)"
 
         try {
+            Invoke-WebRequest -Uri $prog.url -OutFile $caminho -UseBasicParsing
+
+            $status.Text = "Instalando $($prog.nome)..."
+            $form.Refresh()
+
             if ($prog.tipo -eq "msi") {
-                Start-Process "msiexec.exe" -ArgumentList "/i `"$caminho`" $($prog.args)" -Wait
+                Start-Process "msiexec.exe" -ArgumentList "/i `"$caminho`"" -Wait
             } else {
-                Start-Process $caminho -ArgumentList $prog.args -Wait
+                Start-Process $caminho -Wait
             }
+
         } catch {
-            Write-Log "Erro na instalação: $($prog.nome)"
-            $status.Text = "Erro: $($prog.nome)"
+            $status.Text = "Erro em $($prog.nome)"
         }
 
         $count++
-        $progress.Value = [int](($count / $total) * 100)
+
+        # ===== PROGRESSO TOTAL =====
+        $percent = [int](($count / $total) * 100)
+        if ($percent -ge 0 -and $percent -le 100) {
+            $progress.Value = $percent
+        }
     }
 
     $status.Text = "Finalizado!"
-    Write-Log "Processo finalizado"
 }
 
 # ===== EVENTOS =====
