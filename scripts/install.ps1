@@ -5,6 +5,7 @@ Add-Type -AssemblyName System.Drawing
 $base = "$env:ProgramData\RDSolutec"
 New-Item -ItemType Directory -Path $base -Force | Out-Null
 
+# ===== PROGRAMAS =====
 $programas = @(
     @{ nome="AnyDesk"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/AnyDesk.exe"; arquivo="AnyDesk.exe"; tipo="exe" },
     @{ nome="Google Chrome"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/ChromeSetup.exe"; arquivo="ChromeSetup.exe"; tipo="exe" },
@@ -29,7 +30,7 @@ $checkList.Size = New-Object System.Drawing.Size(450,250)
 $checkList.Location = New-Object System.Drawing.Point(20,20)
 
 foreach ($p in $programas) {
-    $checkList.Items.Add($p.nome)
+    [void]$checkList.Items.Add($p.nome)
 }
 
 $form.Controls.Add($checkList)
@@ -97,7 +98,7 @@ function Instalar($lista) {
 
         $count++
 
-        # ===== PROGRESSO TOTAL =====
+        # ===== PROGRESSO =====
         $percent = [int](($count / $total) * 100)
         if ($percent -ge 0 -and $percent -le 100) {
             $progress.Value = $percent
