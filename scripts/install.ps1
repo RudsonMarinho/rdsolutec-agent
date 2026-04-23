@@ -39,6 +39,7 @@ $btnInstalar = New-Object System.Windows.Forms.Button
 $btnInstalar.Text = "Instalar Selecionados"
 $btnInstalar.Size = New-Object System.Drawing.Size(200,40)
 $btnInstalar.Location = New-Object System.Drawing.Point(20,300)
+
 $form.Controls.Add($btnInstalar)
 
 # ===== BOTÃO TODOS =====
@@ -46,6 +47,7 @@ $btnTodos = New-Object System.Windows.Forms.Button
 $btnTodos.Text = "Instalar TODOS"
 $btnTodos.Size = New-Object System.Drawing.Size(200,40)
 $btnTodos.Location = New-Object System.Drawing.Point(270,300)
+
 $form.Controls.Add($btnTodos)
 
 # ===== STATUS =====
@@ -53,14 +55,14 @@ $status = New-Object System.Windows.Forms.Label
 $status.Size = New-Object System.Drawing.Size(450,30)
 $status.Location = New-Object System.Drawing.Point(20,360)
 $status.Text = "Status: Aguardando..."
+
 $form.Controls.Add($status)
 
 # ===== PROGRESS BAR =====
 $progress = New-Object System.Windows.Forms.ProgressBar
 $progress.Size = New-Object System.Drawing.Size(450,30)
 $progress.Location = New-Object System.Drawing.Point(20,400)
-$progress.Minimum = 0
-$progress.Maximum = 100
+
 $form.Controls.Add($progress)
 
 # ===== FUNÇÃO INSTALAR =====
@@ -72,6 +74,7 @@ function Instalar($lista) {
     foreach ($item in $lista) {
 
         $prog = $programas | Where-Object { $_.nome -eq $item }
+
         if ($null -eq $prog) { continue }
 
         $status.Text = "Baixando $($prog.nome)..."
@@ -96,26 +99,20 @@ function Instalar($lista) {
         }
 
         $count++
-
-        # ===== PROGRESSO TOTAL =====
-        $percent = [int](($count / $total) * 100)
-        if ($percent -ge 0 -and $percent -le 100) {
-            $progress.Value = $percent
-        }
+        $progress.Value = ($count / $total) * 100
     }
 
     $status.Text = "Finalizado!"
 }
 
 # ===== EVENTOS =====
+
 $btnInstalar.Add_Click({
     $selecionados = $checkList.CheckedItems
-
     if ($selecionados.Count -eq 0) {
         [System.Windows.Forms.MessageBox]::Show("Selecione pelo menos um programa")
         return
     }
-
     Instalar $selecionados
 })
 
