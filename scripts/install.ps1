@@ -17,7 +17,11 @@ $programas = @(
     @{ nome="Adobe Reader"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/Reader_br_install.exe"; arquivo="reader.exe"; tipo="exe" },
     @{ nome="Zoom"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/ZoomInstallerFull.exe"; arquivo="zoom.exe"; tipo="exe" },
     @{ nome="Whatsapp"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/WhatsApp.exe"; arquivo="zoom.exe"; tipo="exe" },
-    @{ nome="WinRAR"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/winrar-x64-701br.exe"; arquivo="zoom.exe"; tipo="exe" }
+    @{ nome="WinRAR"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/winrar-x64-701br.exe"; arquivo="zoom.exe"; tipo="exe" },
+    @{ nome="CPU-Z"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/cpu-z_2.19-en.exe"; arquivo="zoom.exe"; tipo="exe" },
+    @{ nome="FoxitPDF"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/FoxitPDFReader20261_L10N_Setup_Prom_x64.exe; tipo="exe" },
+    @{ nome="Firefox"; url="https://github.com/RudsonMarinho/rdsolutec-agent/releases/download/v1.0.0/Firefox.Installer.exe; tipo="exe" }
+    
 )
 
 # ===== FORM =====
