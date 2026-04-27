@@ -24,7 +24,7 @@ $programas = @(
 
 # ===== FORM =====
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "RD Solutec - Instalador"
+$form.Text = "RD SOLUTEC - INSTALADOR"
 $form.Size = New-Object System.Drawing.Size(500,550)
 $form.StartPosition = "CenterScreen"
 
